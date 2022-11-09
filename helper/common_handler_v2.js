@@ -20,7 +20,7 @@ exports.pdfGeneration = async function pdfGeneration(instaRes) {
 
 
     return new Promise(async function (resolve, reject) {
-
+        
         let currentTempFolder = 'tmp/' + uuidv4() + "--" + Math.floor(Math.random() * (10000 - 10 + 1) + 10)
 
         let imgPath = __dirname + '/../' + currentTempFolder;
@@ -248,6 +248,8 @@ exports.pdfGeneration = async function pdfGeneration(instaRes) {
                                                 }
                                             });
                                             optionsHtmlToPdf.formData.files = FormData;
+                                            optionsHtmlToPdf.formData.marginTop = 1.2;
+                                            optionsHtmlToPdf.formData.marginBottom = 1;
 
                                             rp(optionsHtmlToPdf)
                                                 .then(function (responseHtmlToPdf) {
@@ -261,7 +263,6 @@ exports.pdfGeneration = async function pdfGeneration(instaRes) {
                                                                 return console.log(err);
                                                             }
                                                             else {
-
                                                                 let uploadFileResponse = await uploadPdfToCloud(pdfFile, dir);
 
                                                                 if (uploadFileResponse.success) {
@@ -292,7 +293,7 @@ exports.pdfGeneration = async function pdfGeneration(instaRes) {
 
                                                                             }
                                                                         });
-                                                                        rimraf(imgPath);
+                                                                        rimraf(imgPath,function () { console.log("done")});
 
                                                                         return resolve({
                                                                             status: filesHelper.status_success,
@@ -565,7 +566,7 @@ exports.instanceObservationPdfGeneration = async function instanceObservationPdf
 
                                                                             }
                                                                         });
-                                                                        rimraf(imgPath);
+                                                                        rimraf(imgPath,function () { console.log("done")});
 
                                                                         return resolve({
                                                                             status: filesHelper.status_success,
@@ -733,6 +734,8 @@ exports.instanceObservationScorePdfGeneration = async function instanceObservati
                                                 }
                                             });
                                             optionsHtmlToPdf.formData.files = formData;
+                                            optionsHtmlToPdf.formData.marginTop = 1.2;
+                                            optionsHtmlToPdf.formData.marginBottom = 1;
 
                                             rp(optionsHtmlToPdf)
                                                 .then(function (responseHtmlToPdf) {
@@ -777,7 +780,7 @@ exports.instanceObservationScorePdfGeneration = async function instanceObservati
 
                                                                             }
                                                                         });
-                                                                        rimraf(imgPath);
+                                                                        rimraf(imgPath,function () { console.log("done")});
 
                                                                         return resolve({
                                                                             status: filesHelper.status_success,
@@ -964,7 +967,7 @@ exports.assessmentPdfGeneration = async function assessmentPdfGeneration(assessm
 
                                                                             }
                                                                         });
-                                                                        rimraf(imgPath);
+                                                                        rimraf(imgPath,function () { console.log("done")});
 
                                                                         return resolve({
                                                                             status: filesHelper.status_success,
@@ -1116,10 +1119,11 @@ exports.assessmentAgainPdfReport = async function (assessmentResponse) {
                 fs.mkdirSync(imgPath);
             }
 
-            let bootstrapStream = await copyBootStrapFile(__dirname + '/../public/css/bootstrap.min.css', imgPath + '/style.css');
+            let bootstrapStream = await copyBootStrapFile(path.join(__dirname, '../public/css/bootstrap.min.css'), imgPath + '/style.css');
 
             // let headerFile = await copyBootStrapFile(__dirname + '/../views/header.html', imgPath + '/header.html');
-            let footerFile = await copyBootStrapFile(__dirname + '/../views/footer.html', imgPath + '/footer.html');
+            // let footerFile = await copyBootStrapFile(path.join(__dirname, '../public/css/bootstrap.min.css'), imgPath + '/footer.html');
+            let footerFile = await copyBootStrapFile(path.join(__dirname,  '/../views/footer.html'), imgPath + '/footer.html');
 
             let FormData = [];
 
@@ -1129,7 +1133,7 @@ exports.assessmentAgainPdfReport = async function (assessmentResponse) {
             let params = {
                 assessmentName: assessmentResponse.programName
             }
-            ejs.renderFile(__dirname + '/../views/assessment_header.ejs', {
+            ejs.renderFile(path.join(__dirname, '../views/assessment_header.ejs'), {
                 data: params
             })
                 .then(function (headerHtml) {
@@ -1137,7 +1141,7 @@ exports.assessmentAgainPdfReport = async function (assessmentResponse) {
                     if (!fs.existsSync(dir)) {
                         fs.mkdirSync(dir);
                     }
-                    fs.writeFile(dir + '/header.html', headerHtml, function (errWr, dataWr) {
+                    fs.writeFile(path.join(dir,'/header.html'), headerHtml, function (errWr, dataWr) {
                         if (errWr) {
                             throw errWr;
                         } else {
@@ -1148,7 +1152,7 @@ exports.assessmentAgainPdfReport = async function (assessmentResponse) {
 
                             assessmentResponse.reportSections[1].isAssessAgain = true;
 
-                            ejs.renderFile(__dirname + '/../views/stacked_bar_assessment_template.ejs', {
+                            ejs.renderFile(path.join(__dirname, '../views/stacked_bar_assessment_template.ejs'), {
                                 data: obj.path[0].options.filename,
                                 assessmentData: assessmentResponse.reportSections[1]
                             })
@@ -1158,12 +1162,13 @@ exports.assessmentAgainPdfReport = async function (assessmentResponse) {
                                     if (!fs.existsSync(dir)) {
                                         fs.mkdirSync(dir);
                                     }
-                                    fs.writeFile(dir + '/index.html', dataEjsRender, function (errWriteFile, dataWriteFile) {
+                                    fs.writeFile(path.join(dir, '/index.html'), dataEjsRender, function (errWriteFile, dataWriteFile) {
                                         if (errWriteFile) {
                                             throw errWriteFile;
                                         } else {
 
                                             let optionsHtmlToPdf = gen.utils.getGotenbergConnection();
+                                            console.log({optionsHtmlToPdf});
                                             optionsHtmlToPdf.formData = {
                                                 files: [
                                                 ]
@@ -1193,9 +1198,12 @@ exports.assessmentAgainPdfReport = async function (assessmentResponse) {
                                                 }
                                             });
                                             optionsHtmlToPdf.formData.files = FormData;
+                                            optionsHtmlToPdf.formData.marginTop = 1.2;
+                                            optionsHtmlToPdf.formData.marginBottom = 1;
+
                                             rp(optionsHtmlToPdf)
                                                 .then(function (responseHtmlToPdf) {
-
+                                                    console.log({responseHtmlToPdf});
                                                     let pdfBuffer = Buffer.from(responseHtmlToPdf.body);
                                                     if (responseHtmlToPdf.statusCode == 200) {
                                                        
@@ -1207,10 +1215,10 @@ exports.assessmentAgainPdfReport = async function (assessmentResponse) {
                                                             else {
 
                                                                 let uploadFileResponse = await uploadPdfToCloud(pdfFile, dir);
-                                                               
+                                                                console.log({uploadFileResponse});
                                                                 if (uploadFileResponse.success) {
                                                                     let pdfDownloadableUrl = await getDownloadableUrl(uploadFileResponse.data);
-                                                                   
+                                                                    console.log({pdfDownloadableUrl});
                                                                     if (pdfDownloadableUrl.success && pdfDownloadableUrl.data.result && Object.keys(pdfDownloadableUrl.data.result).length > 0) {
                                                                         
                                                                         fs.readdir(imgPath, (err, files) => {
@@ -1236,7 +1244,11 @@ exports.assessmentAgainPdfReport = async function (assessmentResponse) {
 
                                                                             }
                                                                         });
-                                                                        rimraf(imgPath);
+                                                                        rimraf(imgPath, (error) => {
+                                                                            if (error) {
+                                                                                console.log('ERROR-RIMRAF', JSON.stringify(error));
+                                                                            }
+                                                                        });
 
                                                                         return resolve({
                                                                             status: filesHelper.status_success,
@@ -1454,6 +1466,14 @@ exports.unnatiViewFullReportPdfGeneration = async function (responseData) {
                                     filename: 'index.html'
                                 }
                             });
+
+                            FormData.push({
+                                value: fs.createReadStream(dir + '/style.css'),
+                                options: {
+                                    filename: 'style.css'
+                                }
+                            });
+
                             optionsHtmlToPdf.formData.files = FormData;
 
 
@@ -1500,7 +1520,7 @@ exports.unnatiViewFullReportPdfGeneration = async function (responseData) {
 
                                                             }
                                                         });
-                                                        rimraf(imgPath);
+                                                        rimraf(imgPath,function () { console.log("done")});
 
                                                         return resolve({
                                                             status: filesHelper.status_success,
@@ -1671,7 +1691,7 @@ exports.instanceCriteriaReportPdfGeneration = async function (instanceResponse) 
 
                                                                             }
                                                                         });
-                                                                        rimraf(imgPath);
+                                                                        rimraf(imgPath,function () { console.log("done")});
 
                                                                         return resolve({
                                                                             status: filesHelper.status_success,
@@ -1838,6 +1858,8 @@ exports.entityCriteriaPdfReportGeneration = async function (responseData) {
                                                 }
                                             });
                                             optionsHtmlToPdf.formData.files = formData;
+                                            optionsHtmlToPdf.formData.marginTop = 1.2;
+                                            optionsHtmlToPdf.formData.marginBottom = 1;
 
                                             rp(optionsHtmlToPdf)
                                                 .then(function (responseHtmlToPdf) {
@@ -1882,7 +1904,7 @@ exports.entityCriteriaPdfReportGeneration = async function (responseData) {
 
                                                                             }
                                                                         });
-                                                                        rimraf(imgPath);
+                                                                        rimraf(imgPath,function () { console.log("done")});
 
                                                                         return resolve({
                                                                             status: filesHelper.status_success,
@@ -2040,6 +2062,8 @@ exports.instanceScoreCriteriaPdfGeneration = async function (observationResp, ob
                                                 }
                                             });
                                             optionsHtmlToPdf.formData.files = formData;
+                                            optionsHtmlToPdf.formData.marginTop = 1.2;
+                                            optionsHtmlToPdf.formData.marginBottom = 1;
 
                                             rp(optionsHtmlToPdf)
                                                 .then(function (responseHtmlToPdf) {
@@ -2084,7 +2108,7 @@ exports.instanceScoreCriteriaPdfGeneration = async function (observationResp, ob
 
                                                                             }
                                                                         });
-                                                                        rimraf(imgPath);
+                                                                        rimraf(imgPath,function () { console.log("done")});
 
                                                                         return resolve({
                                                                             status: filesHelper.status_success,
@@ -2296,6 +2320,7 @@ exports.unnatiEntityReportPdfGeneration = async function (entityReportData) {
                         filename: imgName,
                     }
                 })
+                
             }
 
             //get the chart object
@@ -2336,6 +2361,14 @@ exports.unnatiEntityReportPdfGeneration = async function (entityReportData) {
                                     filename: 'index.html'
                                 }
                             });
+
+                            formData.push({
+                                value: fs.createReadStream(dir + '/style.css'),
+                                options: {
+                                    filename: 'style.css'
+                                }
+                            });
+
                             optionsHtmlToPdf.formData.files = formData;
 
                             rp(optionsHtmlToPdf)
@@ -2381,7 +2414,7 @@ exports.unnatiEntityReportPdfGeneration = async function (entityReportData) {
 
                                                             }
                                                         });
-                                                        rimraf(imgPath);
+                                                        rimraf(imgPath,function () { console.log("done")});
 
                                                         return resolve({
                                                             status: filesHelper.status_success,
@@ -2490,7 +2523,15 @@ async function getTaskOverviewChart(tasks) {
             options: {
                 cutoutPercentage: 80,
                 legend: {
-                    position: "bottom"
+                    position: "bottom",
+                    labels: {
+                        padding: 30,
+                    }
+                },
+                layout: {
+                    padding: {
+                      top: 25
+                    },
                 },
                 plugins: {
                     datalabels: {
@@ -2500,7 +2541,7 @@ async function getTaskOverviewChart(tasks) {
                             size: 18,
                         },
                         formatter: (value) => {
-                          return value + '%';;
+                          return value + '%';
                         }
                     }
                 }
@@ -2594,7 +2635,6 @@ async function copyBootStrapFile(from, to) {
 
 //Prepare chartData for chartjs
 const getChartObject = async function (data) {
-
     let chartOptions = [];
 
     await Promise.all(data.map(chartData => {
@@ -2609,12 +2649,46 @@ const getChartObject = async function (data) {
                plugin : {}
            };
         }
-
+        /* 10-may-2022 - chartjs-node-canvas doesn't have multiple line title property. So spliting questions into array element of fixed length */
+        let titleArray = [];
+        if ( chartData.question && chartData.question !== "" ) {
+                //split questions into an array
+                let words = chartData.question.split(' ');
+                //maximum character length of a line
+                let sentenceLengthLimit = 101;
+                let sentence = "";
+                let titleIndex = 0
+                
+                for ( let index = 0; index < words.length; index++ ) {
+                    let upcomingLength = sentence.length + words[index].length;
+                    //check length of upcoming sentence
+                    if ( upcomingLength <= sentenceLengthLimit ) {
+                        sentence = sentence + " " + words[index];
+                        //add last word 
+                        if ( index == (words.length - 1)) {
+                            titleArray[titleArray.length] = sentence ;
+                        }
+                    } else {
+                        //add line to title array
+                        titleArray[titleIndex] = sentence ;
+                        titleIndex ++ ;
+                        sentence = "";
+                        sentence = sentence + words[index];
+                    }
+                    
+                }
+        }
+        
+        
         if (!chartObj.options.options.title) {
             chartObj.options.options.title = {
                 display: true,
-                text: chartData.question,
-                fontSize: 22
+                text: titleArray,
+                fontSize: 18,
+                fontFamily: 'Arial',
+                fullSize: true,
+                
+                
             };
         }
         
@@ -2656,14 +2730,13 @@ const createChart = async function (chartData, imgPath) {
     return new Promise(async function (resolve, reject) {
 
         try {
-
+            
             let formData = [];
 
             await Promise.all(chartData.map(async data => {
                 let chartImage = "chartPngImage_" + uuidv4() + "_.png";
 
                 let imgFilePath = imgPath + "/" + chartImage;
-
                 let imageBuffer = await chartJSNodeCanvas.renderToBuffer(data.options);
                 fs.writeFileSync(imgFilePath, imageBuffer);
 
@@ -2762,3 +2835,310 @@ const getDownloadableUrl = async function (filePath) {
  
      })
 }
+
+//create pdf report for Questions Response
+exports.questionResponseReportPdf = async function ( dataObj ) {
+    return new Promise(async function (resolve, reject) {
+        try {
+            let solutionName = dataObj.filterData.solutionName;
+            solutionName = solutionName.replace(/ /g,"");   //remove space from solution name
+            solutionName = solutionName.replace(/\//g, ''); //remove slashes from solution name
+            var optionFormData = [];
+
+            let currentTempFolder = 'tmp/' + uuidv4() + "--" + Math.floor(Math.random() * (10000 - 10 + 1) + 10)
+            let imgPath = __dirname + '/../' + currentTempFolder;
+            if (!fs.existsSync(imgPath)) {
+                fs.mkdirSync(imgPath);
+            }
+            
+            await copyBootStrapFile(__dirname + '/../public/css/bootstrap.min.css', imgPath + '/style.css');
+    
+            // let headerFile = await copyBootStrapFile(__dirname + '/../views/header.html', imgPath + '/header.html');
+            await copyBootStrapFile(__dirname + '/../views/footer.html', imgPath + '/footer.html');
+            
+            await Promise.all(dataObj.responseData.map(async domainElement => {
+                
+                    await Promise.all(domainElement.criterias.map(async criteriaElement => {
+                        
+                        await Promise.all(criteriaElement.questionData.map(async questionDataElement => {
+                            const options = await createChartOption(questionDataElement);
+                            const questionResponseChart = await createChart(options.chartOptions, imgPath);
+                            questionDataElement.formData = {
+                                filename : questionResponseChart[0].options.filename
+                            };
+                            optionFormData.push(questionResponseChart[0]);
+                            questionDataElement.legendData = options.legendArray
+                        }))
+                        
+                    }))
+            }))
+            //ecm based sorting
+            await Promise.all(dataObj.responseData.map(async domainElement => {
+                await Promise.all(domainElement.criterias.map(async criteriaElement => {
+                    if( criteriaElement.questionData && criteriaElement.questionData.length > 0 ) {
+                        let myArray = criteriaElement.questionData;
+                        myArray.sort((a, b) => a.questionSequenceByEcm - b.questionSequenceByEcm)
+                        criteriaElement.questionData = myArray;
+                    }   
+                }))
+            }))
+    
+            ejs.renderFile(__dirname + '/../views/questionResponseReportTemplate.ejs', {
+                data: dataObj
+            })
+                .then(function (dataEjsRender) {
+    
+                    var dir = imgPath;
+                    if (!fs.existsSync(dir)) {
+                        fs.mkdirSync(dir);
+                    }
+                    fs.writeFile(dir + '/index.html', dataEjsRender, function (errWriteFile, dataWriteFile) {
+                        if (errWriteFile) {
+                            throw errWriteFile;
+                        } else {
+                            let optionsHtmlToPdf = gen.utils.getGotenbergConnection();
+                            
+                                
+                                optionsHtmlToPdf.formData = {
+                                    files: [
+                                    ]
+                                };
+                                optionFormData.push({
+                                    value: fs.createReadStream(dir + '/index.html'),
+                                    options: {
+                                        filename: 'index.html'
+                                    }
+                                    
+                                });
+                                optionFormData.push({
+                                    value: fs.createReadStream(dir + '/style.css'),
+                                    options: {
+                                        filename: 'style.css'
+                                    }
+                                });
+                                optionsHtmlToPdf.formData.files = optionFormData;
+                                optionsHtmlToPdf.formData.paperHeight = 4.6;
+                                optionsHtmlToPdf.formData.emulatedMediaType = "screen";
+                                optionsHtmlToPdf.formData.marginRight = 0;
+                                optionsHtmlToPdf.formData.marginLeft = 0;
+                                optionsHtmlToPdf.formData.marginTop = 0.2;
+                                optionsHtmlToPdf.formData.marginBottom = 0;
+        
+                                rp(optionsHtmlToPdf)
+                                    .then(function (responseHtmlToPdf) {
+    
+                                        let pdfBuffer = Buffer.from(responseHtmlToPdf.body);
+                                        
+                                        if (responseHtmlToPdf.statusCode == 200) {
+                                           
+                                            let pdfFile = solutionName + '-' + uuidv4() + ".pdf";
+                                            fs.writeFile( dir + '/' + pdfFile, pdfBuffer, 'binary', async function (err) {
+                                                if (err) {
+                                                    
+                                                    return console.log(err);
+                                                }
+                                                else {
+                                                    let uploadFileResponse = await uploadPdfToCloud(pdfFile, dir);
+
+                                                    if (uploadFileResponse.success) {
+                                                        let pdfDownloadableUrl = await getDownloadableUrl(uploadFileResponse.data);
+
+                                                        if (pdfDownloadableUrl.success && pdfDownloadableUrl.data.result && Object.keys(pdfDownloadableUrl.data.result).length > 0) {
+
+                                                            fs.readdir(imgPath, (err, files) => {
+                                                                if (err) throw err;
+
+                                                                let i = 0;
+                                                                for (const file of files) {
+
+                                                                    fs.unlink(path.join(imgPath, file), err => {
+                                                                        if (err) throw err;
+                                                                    });
+
+                                                                    if (i == files.length) {
+                                                                        fs.unlink('../../' + currentTempFolder, err => {
+                                                                            if (err) throw err;
+
+                                                                        });
+                                                                        console.log("path.dirname(filename).split(path.sep).pop()", path.dirname(file).split(path.sep).pop());
+
+                                                                    }
+
+                                                                    i = i + 1;
+
+                                                                }
+                                                            });
+                                                            rimraf(imgPath, function () { console.log("done"); });
+
+                                                            return resolve({
+                                                                status: filesHelper.status_success,
+                                                                message: filesHelper.pdf_report_generated,
+                                                                pdfUrl: pdfDownloadableUrl.data.result.url
+                                                            });
+                                                        }
+                                                        else {
+                                                            
+                                                            return resolve({
+                                                                status: filesHelper.status_failure,
+                                                                message: pdfDownloadableUrl.message ? pdfDownloadableUrl.message : filesHelper.could_not_generate_pdf,
+                                                                pdfUrl: ""
+                                                            })
+                                                        }
+                                                    }
+                                                    else {
+                                                        return resolve({
+                                                            status: filesHelper.status_failure,
+                                                            message: uploadFileResponse.message ? uploadFileResponse.message : filesHelper.could_not_generate_pdf,
+                                                            pdfUrl: ""
+                                                        })
+                                                    }
+                                                }
+                                            });
+                                        }
+    
+                                    }).catch(err => {
+                                       throw err;
+                                    })
+    
+                            
+                        }
+                    });
+                })
+                .catch(function (errEjsRender) {
+                    throw errEjsRender
+                });
+    
+        } catch ( err ) {
+            return resolve(err)
+        }
+    });
+    
+}
+
+//add options to each question data - for question response report
+const createChartOption = async function(questionData) {
+    try {
+        let optionsData;
+        var xValues = [];
+        var yValues = [];
+        let legendData = [];
+        //create data arrays to plot graph
+        if ( questionData.answerData.length > 0 ) {
+            await Promise.all(questionData.answerData.map( answerElement => {
+                xValues.push(answerElement[0]);
+                yValues.push(answerElement[1])    
+            }))
+        }
+        let totalSubmissions = yValues.reduce((a, b) => a + b, 0)
+        
+        for ( let i = 0; i < yValues.length; i++ ) {
+            let newValue = (yValues[i] / totalSubmissions) * 100;
+            let num = Math.round( ( newValue + Number.EPSILON ) * 100 ) / 100;
+            yValues[i] = num;
+        }
+
+        if( questionData.questionResponseType == "radio" || questionData.questionResponseType == "slider" ) {
+
+            let yValuesNew = [];
+            for ( let i = 0; i < yValues.length; i++ ) {
+                yValuesNew[i] = yValues[i]+'%';
+            }
+            legendData = xValues
+            
+            optionsData = [{
+                options : {
+                    type: "pie",
+                    data: {
+                        labels: yValuesNew,
+                        datasets: [{
+                        backgroundColor: ['#FD7F6F', '#7EB0D5', '#B2E061', '#BD7EBE', '#FFB55A', '#FFEE65', '#BEB9DB', '#FDCCE5', '#8BD3C7','#A4A2A8'],
+                        data: yValues
+                        }]
+                    },
+                    options: {
+                        plugins: {
+                            datalabels: {
+                              display: false
+                            }
+                        },
+                        legend: {
+                            display: true,
+                            position: 'bottom',
+                            labels: {
+                                "fontSize": 14,
+                            }
+                            
+                        },
+                    }
+                    
+                }
+            }];
+            
+        } else {
+            let xValuesNew = [];
+            for ( let i = 0; i < xValues.length; i++ ) {
+                xValuesNew[i] = 'R'+(i+1);
+                legendData[i] = 'R'+(i+1)+' - '+xValues[i];
+
+            }
+            
+            //bar chart options
+            optionsData = [{
+                options : {
+                    type: 'bar',
+                    data: {
+                        labels: xValuesNew,
+                        datasets: [
+                            {
+                                data: yValues,
+                                backgroundColor: 'rgb(84, 113, 243)',
+                                barPercentage: 0.5
+                            }
+                    
+                        ]
+                    },
+                    options: {
+                        //display of legend
+                        legend: {
+                            display: false
+                        },
+                        plugins: {
+                            //not display data on bar
+                            datalabels: {
+                              display: false
+                            }
+                        },
+                        scales: {
+                            yAxes: [{
+                                ticks: {
+                                    beginAtZero:true
+                                },
+                                scaleLabel: {
+                                    display: true,
+                                    fontSize: 20,
+                                    labelString:  'Percentage times options chosen'
+                                },
+                            }],
+                            xAxes: [{
+                                scaleLabel: {
+                                    display: true,
+                                    fontSize: 18,
+                                    labelString:  'Options'
+                                },
+                                
+                            }]
+                        },
+                    }
+                    
+                }
+            }];
+        }
+        questionData.percentageData = yValues;
+        return {
+            chartOptions :optionsData,
+            legendArray : legendData
+        };
+    } catch (error) {
+        throw error;
+    }
+} 
