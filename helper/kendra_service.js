@@ -5,8 +5,9 @@ const uuidv4 = require('uuid/v4');
 //Make API call to ml-core-service for getting downloadable link
 async function getDownloadableUrl(filePaths, token) {
   return new Promise(async function (resolve, reject) {
-
+    
     let url = urlPrefix + endpoints.GET_DOWNLOADABLE_URL;
+    console.log({ 'CoreServiceDownloadableUrl: ': url });
     
     let options = {
       method: "POST",
@@ -29,7 +30,6 @@ async function getDownloadableUrl(filePaths, token) {
       })
   })
 }
-
 
 async function getPreSignedUrl(file) {
   return new Promise(async function (resolve, reject) {
@@ -66,8 +66,36 @@ async function getPreSignedUrl(file) {
   })
 }
 
+async function getUserExtension(token){
+  return new Promise(async function (resolve, reject) {
+    
+    let url = urlPrefix + endpoints.GET_USER_EXTENSION;
+    let options = {
+      method: "POST",
+      json: true,
+      headers: {
+        "x-authenticated-user-token": token,
+        "internal-access-token": process.env.INTERNAL_ACCESS_TOKEN,
+        "Content-Type": "application/json",
+      },
+      body: {},
+      uri: url
+    }
+
+    rp(options)
+      .then(result => {
+        return resolve(result);
+      })
+      .catch(err => {
+        return resolve(err);
+      })
+  })
+
+}
+
 
 module.exports = {
   getDownloadableUrl: getDownloadableUrl,
-  getPreSignedUrl: getPreSignedUrl
+  getPreSignedUrl: getPreSignedUrl,
+  getUserExtension:getUserExtension
 }
