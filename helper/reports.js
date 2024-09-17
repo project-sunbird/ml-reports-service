@@ -14,17 +14,17 @@ exports.instaceObservationReport = async function (req, res) {
         try {
 
         let bodyParam = gen.utils.getDruidQuery("instance_observation_query");
-
+            console.log({DruidQuery: bodyParam});
         if (process.env.OBSERVATION_DATASOURCE_NAME) {
             bodyParam.dataSource = process.env.OBSERVATION_DATASOURCE_NAME;
         }
 
         //Apply submissionId filter
-        bodyParam.filter.fields[0].value = req.body.submissionId;
+        bodyParam.filter.fields[0].value = req.body.submissionId.replace(/[^a-zA-Z0-9_-]/g, '');
 
         //Push criteriaId or questionId filter based on the report Type (question wise and criteria wise)
         if (req.body.criteriaWise == false && req.body.filter && req.body.filter.questionId && req.body.filter.questionId.length > 0) {
-            bodyParam.filter.fields.push({ "type": "in", "dimension": "questionExternalId", "values": req.body.filter.questionId });
+            bodyParam.filter.fields.push({ "type": "in", "dimension": "questionExternalId", "values": req.body.filter.questionId.replace(/[^a-zA-Z0-9_-]/g, '') });
         }
 
         if (req.body.criteriaWise == true && req.body.filter && req.body.filter.criteria && req.body.filter.criteria.length > 0) {
@@ -32,11 +32,11 @@ exports.instaceObservationReport = async function (req, res) {
         }
 
         let criteriaLevelReport = false;
-
         if (req.body.scores == true) {
-
-             let getReportType = await getCriteriaLevelReportKey({ submissionId: req.body.submissionId});
+            
+            let getReportType = await getCriteriaLevelReportKey({ submissionId: req.body.submissionId.replace(/[^a-zA-Z0-9_-]/g, '')});
             if (!getReportType.length) {
+                console.log({getReportType: 'NotFound'})
                 return resolve({
                     result: false,
                     message: filesHelper.submission_not_found_message
@@ -45,12 +45,13 @@ exports.instaceObservationReport = async function (req, res) {
                 criteriaLevelReport = getReportType[0].event.criteriaLevelReport == "true";
             }
         }
+        console.log({criteriaLevelReport});
 
         if (criteriaLevelReport == false) {
             bodyParam.filter.fields.push({ "type": "not", "field": { "type": "selector", "dimension": "questionAnswer", "value": "" } });
         }
 
-        bodyParam.dimensions = ["programName", "solutionName", req.body.entityType + "Name"];
+        bodyParam.dimensions = ["programName", "solutionName", req.body.entityType.replace(/[^a-zA-Z0-9_-]/g, '')+ "Name"];
         if (!bodyParam.dimensions.includes("districtName")) {
             bodyParam.dimensions.push("districtName");
         }
@@ -76,7 +77,7 @@ exports.instaceObservationReport = async function (req, res) {
 
         if (req.body.scores == true && criteriaLevelReport == true) {
             bodyParam.filter.fields.push({"type":"selector","dimension":"childType","value":"criteria"})
-            bodyParam.dimensions.push("observationSubmissionId", "completedDate", "domainName", "criteriaDescription", "level", "label", "childExternalid", "childName", "childType", "solutionId");
+            bodyParam.dimensions.push("observationSubmissionId", "completedDate", "domainName", "criteriaDescription", "level", "label", "childExternalid", "childName", "childType", "solutionId","criteriaScore");
         }
 
         if (!bodyParam.dimensions.includes('completedDate')) {
@@ -87,6 +88,7 @@ exports.instaceObservationReport = async function (req, res) {
         let options = gen.utils.getDruidConnection();
         options.method = "POST";
         options.body = bodyParam;
+        console.log({druidConnection: options});
         let data = await rp(options);
 
         if (!data.length) {
@@ -96,6 +98,7 @@ exports.instaceObservationReport = async function (req, res) {
                     req.body.submissionId,
                     req.headers["x-authenticated-user-token"]
                 )
+            console.log({getSubmissionStatusResponse})    
 
             if (getSubmissionStatusResponse.result &&
                 getSubmissionStatusResponse.result.status == filesHelper.submission_status_completed) {
@@ -116,10 +119,10 @@ exports.instaceObservationReport = async function (req, res) {
             let chartData;
 
             let evidenceData = await getEvidenceData({ submissionId: req.body.submissionId });
-
+            console.log({getEvidenceData: true});
             //Send report based on input
+            console.log({ scores: req.body.scores, criteriaWise: req.body.criteriaWise, criteriaLevelReport })
             if (req.body.scores == false && req.body.criteriaWise == false) {
-
                 chartData = await helperFunc.instanceReportChart(data);
                 chartData.entityName = data[0].event[req.body.entityType + "Name"];
 
@@ -246,6 +249,7 @@ exports.instaceObservationReport = async function (req, res) {
 
                 if (req.body.pdf) {
                     let pdfReport = await pdfHandler.assessmentAgainPdfReport(response);
+                    console.log({pdfReport})
                     return resolve(pdfReport);
                 } else {
 
@@ -314,6 +318,7 @@ exports.entityObservationReport = async function (req, res) {
             });
 
             if (!getReportType.length) {
+                console.log({getReportTypeInEntityObservationReport: 'NotFound'})
                 return resolve({
                     result: false,
                     message: filesHelper.submission_not_found_message
@@ -327,7 +332,9 @@ exports.entityObservationReport = async function (req, res) {
             bodyParam.filter.fields.push({ "type": "not", "field": { "type": "selector", "dimension": "questionAnswer", "value": "" } });
         }
 
-        bodyParam.dimensions = ["programName","solutionName","submissionTitle",entityType + "Name"];
+        console.log({criteriaLevelReport});
+
+        bodyParam.dimensions = ["programName","solutionName","submissionTitle",entityType.replace(/[^a-zA-Z0-9_-]/g, '') + "Name"];
         if (!bodyParam.dimensions.includes("districtName")) {
             bodyParam.dimensions.push("districtName");
         }
@@ -353,20 +360,22 @@ exports.entityObservationReport = async function (req, res) {
 
         if (req.body.scores == true && criteriaLevelReport == true) {
             bodyParam.filter.fields.push({"type":"selector","dimension":"childType","value":"criteria"});
-            bodyParam.filter.fields.push({"type":"selector","dimension":"createdBy","value": req.userDetails.userId});
-            bodyParam.dimensions.push("observationSubmissionId", "completedDate", "domainName", "criteriaDescription", "level", "label", "childExternalid", "childName", "childType", "solutionId");
+            bodyParam.filter.fields.push({"type":"selector","dimension":"createdBy","value": req.userDetails.userId.replace(/[^a-zA-Z0-9_-]/g, '')});
+            bodyParam.dimensions.push("observationSubmissionId", "completedDate", "domainName", "criteriaDescription", "level", "label", "childExternalid", "childName", "childType", "solutionId","criteriaScore");
         }
 
         if (!bodyParam.dimensions.includes('completedDate')) {
             bodyParam.dimensions.push('completedDate');
         }
 
+        console.log({druidQuery: JSON.stringify(bodyParam)});
+
         //pass the query get the result from druid
         let options = gen.utils.getDruidConnection();
         options.method = "POST";
         options.body = bodyParam;
         let data = await rp(options);
-
+        
         if (!data.length) {
             let message;
             let getEntityObservationSubmissionsStatus = await assessmentService.getEntityObservationSubmissionsStatus
@@ -375,6 +384,7 @@ exports.entityObservationReport = async function (req, res) {
                     req.body.observationId,
                     req.headers["x-authenticated-user-token"]
                 )
+            
 
             if (getEntityObservationSubmissionsStatus.result &&
                 getEntityObservationSubmissionsStatus.result.length > 0) {
@@ -597,19 +607,19 @@ const getCriteriaLevelReportKey = async function (inputData) {
         let query = {};
 
         if (inputData.submissionId) {
-            query = { "queryType": "groupBy", "dataSource": process.env.OBSERVATION_DATASOURCE_NAME, "granularity": "all", "dimensions": ["criteriaLevelReport"], "filter": { "type": "and", "fields": [{"type": "selector", "dimension": "observationSubmissionId", "value": inputData.submissionId },{ "type": "not", "field": { "type": "selector", "dimension": "criteriaLevelReport", "value": "" }}]}, "aggregations": [], "postAggregations": [], "limitSpec": {}, "intervals": ["1901-01-01T00:00:00+00:00/2101-01-01T00:00:00+00:00"] }
+            query = { "queryType": "groupBy", "dataSource": process.env.OBSERVATION_DATASOURCE_NAME, "granularity": "all", "dimensions": ["criteriaLevelReport"], "filter": { "type": "and", "fields": [{"type": "selector", "dimension": "observationSubmissionId", "value": inputData.submissionId.replace(/[^a-zA-Z0-9_-]/g, '') },{ "type": "not", "field": { "type": "selector", "dimension": "criteriaLevelReport", "value": "" }}]}, "aggregations": [], "postAggregations": [], "limitSpec": {}, "intervals": ["1901-01-01T00:00:00+00:00/2101-01-01T00:00:00+00:00"] }
         }
 
         if (inputData.entityId && inputData.observationId && inputData.entityType) {
-            query = { "queryType": "groupBy", "dataSource": process.env.OBSERVATION_DATASOURCE_NAME, "granularity": "all", "dimensions": ["criteriaLevelReport"], "filter": { "type": "and", "fields": [{ "type": "selector", "dimension": inputData.entityType, "value": inputData.entityId }, { "type": "selector", "dimension": "observationId", "value": inputData.observationId },{ "type": "not", "field": { "type": "selector", "dimension": "criteriaLevelReport", "value": "" } }] }, "aggregations": [], "postAggregations": [], "limitSpec": {}, "intervals": ["1901-01-01T00:00:00+00:00/2101-01-01T00:00:00+00:00"] }
+            query = { "queryType": "groupBy", "dataSource": process.env.OBSERVATION_DATASOURCE_NAME, "granularity": "all", "dimensions": ["criteriaLevelReport"], "filter": { "type": "and", "fields": [{ "type": "selector", "dimension": inputData.entityType.replace(/[^a-zA-Z0-9_-]/g, ''), "value": inputData.entityId.replace(/[^a-zA-Z0-9_-]/g, '') }, { "type": "selector", "dimension": "observationId", "value": inputData.observationId.replace(/[^a-zA-Z0-9_-]/g, '') },{ "type": "not", "field": { "type": "selector", "dimension": "criteriaLevelReport", "value": "" } }] }, "aggregations": [], "postAggregations": [], "limitSpec": {}, "intervals": ["1901-01-01T00:00:00+00:00/2101-01-01T00:00:00+00:00"] }
         }
-
+        console.log({getCriteriaLevelReportKeyQuery: JSON.stringify(query)});
         //pass the query get the result from druid
         let options = gen.utils.getDruidConnection();
         options.method = "POST";
         options.body = query;
         let data = await rp(options);
-
+        console.log({ DruidDataLength: data.length })
         return resolve(data);
 
     })
@@ -620,7 +630,7 @@ const getCriteriaLevelReportKey = async function (inputData) {
 const checkIfImpSuggesionExists = async function(submissionId) {
     return new Promise(async function (resolve, reject) {
 
-        let query = { "queryType": "groupBy", "dataSource": process.env.OBSERVATION_DATASOURCE_NAME, "granularity": "all", "dimensions": ["imp_project_id","imp_project_title","imp_project_externalId","imp_project_goal","criteriaName","level","label","criteriaId"], "filter": { "type": "and", "fields": [{"type": "selector", "dimension": "observationSubmissionId", "value": submissionId },{ "type": "not", "field": { "type": "selector", "dimension": "imp_project_id", "value": "" }}]}, "aggregations": [], "postAggregations": [], "limitSpec": {}, "intervals": ["1901-01-01T00:00:00+00:00/2101-01-01T00:00:00+00:00"] };
+        let query = { "queryType": "groupBy", "dataSource": process.env.OBSERVATION_DATASOURCE_NAME, "granularity": "all", "dimensions": ["imp_project_id","imp_project_title","imp_project_externalId","imp_project_goal","criteriaName","level","label","criteriaId"], "filter": { "type": "and", "fields": [{"type": "selector", "dimension": "observationSubmissionId", "value": submissionId.replace(/[^a-zA-Z0-9_-]/g, '') },{ "type": "not", "field": { "type": "selector", "dimension": "imp_project_id", "value": "" }}]}, "aggregations": [], "postAggregations": [], "limitSpec": {}, "intervals": ["1901-01-01T00:00:00+00:00/2101-01-01T00:00:00+00:00"] };
         
         //pass the query get the result from druid
         let options = gen.utils.getDruidConnection();
@@ -652,9 +662,9 @@ async function getEvidenceData(inputObj) {
         let filter = {};
   
         if (submissionId) {
-          filter = { "type": "selector", "dimension": "observationSubmissionId", "value": submissionId }
+          filter = { "type": "selector", "dimension": "observationSubmissionId", "value": submissionId.replace(/[^a-zA-Z0-9_-]/g, '') }
         } else if (entityId && observationId && entityType) {
-          filter = { "type": "and", "fields": [{ "type": "selector", "dimension": "entity", "value": entityId }, { "type": "selector", "dimension": "observationId", "value": observationId }] }
+          filter = { "type": "and", "fields": [{ "type": "selector", "dimension": "entity", "value": entityId.replace(/[^a-zA-Z0-9_-]/g, '') }, { "type": "selector", "dimension": "observationId", "value": observationId.replace(/[^a-zA-Z0-9_-]/g, '') }] }
         } 
 
         if (process.env.OBSERVATION_EVIDENCE_DATASOURCE_NAME) {
@@ -687,4 +697,110 @@ async function getEvidenceData(inputObj) {
         resolve(response);
       };
     })
+}
+
+//generate question response report
+exports.questionResponseReport = async function ( req ,res ) {
+    try {
+        //get druid query for question response report
+        const bodyParams = gen.utils.getDruidQuery('question_response_query');
+      
+        //Apply program id and solution id filters to druid query
+        bodyParams.filter.fields.push(
+            {
+                "type": "selector",
+                "dimension": "solutionId",
+                "value": req.params._id.replace(/[^a-zA-Z0-9_-]/g, '')
+            }
+        );
+        bodyParams.columns.push( "solutionId");  
+       
+        //Apply optional filters if they are provided by the user { programId, organization, district, block or school }
+        if( req.query.programId && req.query.programId != "" ) {
+            bodyParams.filter.fields.push(
+                {
+                    "type": "selector",
+                    "dimension": "programId",
+                    "value": req.query.programId.replace(/[^a-zA-Z0-9_-]/g, '')
+                }
+            );          
+        }
+
+        if( req.body.organization && req.body.organization != "" ) {
+            bodyParams.filter.fields.push(
+                {
+                    "type": "search",
+                    "dimension": "organisation_name",
+                    "query": {
+                        "type": "insensitive_contains",
+                        "value": req.body.organization
+                    }
+                }
+            );
+            bodyParams.columns.push( "organisation_name");           
+        }
+       
+        if( req.body.block && req.body.block != "" ) {
+            bodyParams.filter.fields.push(
+                {
+                    "type": "selector",
+                    "dimension": "block_externalId",
+                    "value":  req.body.block
+                }
+            );   
+            bodyParams.columns.push( "user_blockName");    
+        }
+        
+        if( req.body.district && req.body.district != "" ) {
+            bodyParams.filter.fields.push(
+                {
+                    "type": "selector",
+                    "dimension": "district_externalId",
+                    "value": req.body.district
+                }
+            );   
+            bodyParams.columns.push( "user_districtName");           
+        }
+        let datefilter = {};
+        if ( req.body.from && req.body.from !="" && req.body.to && req.body.to !="" ) {
+
+            let from = await utils.getDruidIntervalDate(req.body.from.replace(/[^a-zA-Z0-9_-]/g, ''));
+            let to = await utils.getDruidIntervalDate(req.body.to.replace(/[^a-zA-Z0-9_-]/g, ''));
+            let druidInterval = from + '/' + to;
+            bodyParams.intervals = druidInterval;
+            datefilter.from = req.body.from;
+            datefilter.to = req.body.to;
+
+        } else {
+
+            bodyParams.intervals = "1901-01-01T00:00:00+00:00/2101-01-01T00:00:00+00:00";
+
+        }
+        
+        //pass the query get the result from druid
+        const options = gen.utils.getDruidConnection();
+        options.method = "POST";
+        options.body = bodyParams;
+        const data = await rp(options);
+
+        //check data from druid
+        if( data.length ) {
+            //send data for processing
+            const response = await helperFunc.questionResponseReportDataObjectCreation(data, datefilter);
+            const result = await pdfHandler.questionResponseReportPdf(response);
+            return result;
+        } else {
+            return {
+                "result" : false,
+                "data" : "QUESTION_RESPONSE_NOT_FOUND"
+            }
+        }
+
+    } catch(error) {
+        let response = {
+            result: false,
+            message: error.message
+          };
+          return response;
+    }
 }

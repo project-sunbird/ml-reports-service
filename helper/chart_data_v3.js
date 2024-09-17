@@ -4,6 +4,7 @@ const filesHelper = require('../common/files_helper');
 const kendraService = require('./kendra_service');
 const default_no_of_assessment_submissions_threshold = 3;
 const default_entity_score_api_threshold = 5;
+const _ = require('lodash');
 
 //function for instance observation final response creation
 exports.instanceReportChart = async function (data, reportType = "") {
@@ -377,15 +378,20 @@ exports.entityReportChart = async function (data, entityId, entityType, reportTy
         //sort the response objects based on questionExternalId field
         await response.reportSections.sort(getSortOrder("order")); //Pass the attribute to be sorted on
 
-        response.filters = [{
-            order: "",
-            filter: {
-                type: "dropdown",
-                title: "",
-                keyToSend: "submissionId",
-                data: submissions 
-            }
-        },{
+        response.filters = [];
+        if (submissions.length > 1) {
+            response.filters.push({
+                order: "",
+                filter: {
+                    type: "dropdown",
+                    title: "",
+                    keyToSend: "submissionId",
+                    data: submissions 
+                }
+            });
+        }
+
+        response.filters.push({
             order: "",
             filter: {
                 type: "segment",
@@ -393,7 +399,7 @@ exports.entityReportChart = async function (data, entityId, entityType, reportTy
                 keyToSend: "criteriaWise",
                 data: ["questionWise","criteriaWise"] 
             }
-        }]
+        });
 
         if (!reportType || reportType == filesHelper.survey) {
             // Get the questions array
@@ -961,15 +967,20 @@ exports.entityScoreReportChartObjectCreation = async function (data, reportType)
     //sort the response objects using questionExternalId field
     await response.reportSections.sort(getSortOrder("order")); //Pass the attribute to be sorted on
 
-    response.filters = [{
-        order: "",
-        filter: {
-            type: "dropdown",
-            title: "",
-            keyToSend: "submissionId",
-            data: submissions 
-        },
-    },{
+    response.filters = [];
+    if ( submissions.length > 1 ) {
+        response.filters.push({
+            order: "",
+            filter: {
+                type: "dropdown",
+                title: "",
+                keyToSend: "submissionId",
+                data: submissions 
+            },
+        });
+    }
+
+    response.filters.push({
         order: "",
         filter: {
             type: "segment",
@@ -977,7 +988,7 @@ exports.entityScoreReportChartObjectCreation = async function (data, reportType)
             keyToSend: "criteriaWise",
             data: ["questionWise","criteriaWise"] 
         }
-    }]
+    });
 
     if (!reportType) {
         // Get the question array
@@ -1525,7 +1536,7 @@ exports.entityLevelReportData = async function (data) {
         return resolve({
             result : result,
             submissionId: latestSubmissionId,
-            filters :  [{
+            filters :  submissions.length > 1 ? [{
                 order: "",
                 filter: {
                     type: "dropdown",
@@ -1533,7 +1544,7 @@ exports.entityLevelReportData = async function (data) {
                     keyToSend: "submissionId",
                     data: submissions 
                 },
-            }]
+            }] : []
             
 
         });
@@ -1570,6 +1581,7 @@ const entityLevelReportChartCreateFunc = async function (groupedSubmissionData, 
 
                 let domainData = groupedSubmissionData[date][domain];
 
+                
                 if (domainData.event.level !== null) {
 
                     scoresExists = true;
@@ -1631,6 +1643,14 @@ const entityLevelReportChartCreateFunc = async function (groupedSubmissionData, 
                         }
                     }
 
+                    
+                    let levelData = [domainData.event.label];
+                    let levelsWithScores = [];
+                    if(domainData.event.criteriaScore){
+                        levelsWithScores = [{ level: domainData.event.label , score: domainData.event.criteriaScore }];
+                    }
+                    
+                    
 
                     // Domain and criteria object creation
                     if (!domainCriteriaObj[domainData.event.domainName]) {
@@ -1640,7 +1660,9 @@ const entityLevelReportChartCreateFunc = async function (groupedSubmissionData, 
 
                         domainCriteriaObj[domainData.event.domainName][domainData.event.childExternalid][domainData.event.childName] = {};
 
-                        domainCriteriaObj[domainData.event.domainName][domainData.event.childExternalid][domainData.event.childName]["levels"] = [domainData.event.label];
+                       
+                        domainCriteriaObj[domainData.event.domainName][domainData.event.childExternalid][domainData.event.childName]["levels"] = levelData;
+                        domainCriteriaObj[domainData.event.domainName][domainData.event.childExternalid][domainData.event.childName]["levelsWithScores"] = levelsWithScores;
                     }
                     else {
 
@@ -1648,25 +1670,32 @@ const entityLevelReportChartCreateFunc = async function (groupedSubmissionData, 
                             domainCriteriaObj[domainData.event.domainName][domainData.event.childExternalid] = {};
 
                             domainCriteriaObj[domainData.event.domainName][domainData.event.childExternalid][domainData.event.childName] = {};
-                            domainCriteriaObj[domainData.event.domainName][domainData.event.childExternalid][domainData.event.childName]["levels"] = [domainData.event.label];
+
+                            domainCriteriaObj[domainData.event.domainName][domainData.event.childExternalid][domainData.event.childName]["levels"] =  levelData;
+                            domainCriteriaObj[domainData.event.domainName][domainData.event.childExternalid][domainData.event.childName]["levelsWithScores"] =  levelsWithScores;
                         }
                         else {
                             if (!domainCriteriaObj[domainData.event.domainName][domainData.event.childExternalid][domainData.event.childName]) {
                                 domainCriteriaObj[domainData.event.domainName][domainData.event.childExternalid][domainData.event.childName] = {};
 
-                                domainCriteriaObj[domainData.event.domainName][domainData.event.childExternalid][domainData.event.childName]["levels"] = [domainData.event.label];
+                                domainCriteriaObj[domainData.event.domainName][domainData.event.childExternalid][domainData.event.childName]["levels"] = levelData;
+                                domainCriteriaObj[domainData.event.domainName][domainData.event.childExternalid][domainData.event.childName]["levelsWithScores"] = levelsWithScores;
+                                
                             }
                             else {
 
                                 if (!domainCriteriaObj[domainData.event.domainName][domainData.event.childExternalid][domainData.event.childName]["levels"]) {
-                                    domainCriteriaObj[domainData.event.domainName][domainData.event.childExternalid][domainData.event.childName]["levels"] = [domainData.event.label];
+                                    domainCriteriaObj[domainData.event.domainName][domainData.event.childExternalid][domainData.event.childName]["levels"] = levelData;
+                                    domainCriteriaObj[domainData.event.domainName][domainData.event.childExternalid][domainData.event.childName]["levelsWithScores"] = levelsWithScores;
                                 }
                                 else {
-                                    domainCriteriaObj[domainData.event.domainName][domainData.event.childExternalid][domainData.event.childName]["levels"].push(domainData.event.label);
+                                    domainCriteriaObj[domainData.event.domainName][domainData.event.childExternalid][domainData.event.childName]["levels"].push(levelData[0]);
+                                    domainCriteriaObj[domainData.event.domainName][domainData.event.childExternalid][domainData.event.childName]["levelsWithScores"].push(levelsWithScores[0]);
                                 }
                             }
                         }
                     }
+
                 }
             }
         }
@@ -1699,7 +1728,7 @@ const entityLevelReportChartCreateFunc = async function (groupedSubmissionData, 
                 let levels = domainObj[domainKeys[domainKey]][dateKeys[dateKey]];
 
                 let levelKeys = Object.keys(levels);
-
+       
                 for (level in dynamicLevelObj) {
                     if (levelKeys.includes(level)) {
                         dynamicLevelObj[level].push(levels[level]);
@@ -1716,6 +1745,7 @@ const entityLevelReportChartCreateFunc = async function (groupedSubmissionData, 
             obj[key] = dynamicLevelObj[key];
         });
 
+      
         let backgroundColors = ['rgb(255, 99, 132)','rgb(54, 162, 235)','rgb(255, 206, 86)','rgb(231, 233, 237)','rgb(75, 192, 192)','rgb(151, 187, 205)','rgb(220, 220, 220)','rgb(247, 70, 74)','rgb(70, 191, 189)','rgb(253, 180, 92)','rgb(148, 159, 177)','rgb(77, 83, 96)','rgb(95, 101, 217)','rgb(170, 95, 217)','rgb(140, 48, 57)','rgb(209, 6, 40)','rgb(68, 128, 51)','rgb(125, 128, 51)','rgb(128, 84, 51)','rgb(179, 139, 11)'];
         let i = 0;
   
@@ -1787,9 +1817,10 @@ const entityLevelReportChartCreateFunc = async function (groupedSubmissionData, 
 
                 for (ckey = 0; ckey < criteriaKey.length; ckey++) {
 
-                    let criteriaObj = {
+                    let criteriaObj = { 
                         name: criteriaKey[ckey],
-                        levels: domainCriteriaObj[domainCriteriaKeys[domainKey]][externalIdKeys[externalIdKey]][criteriaKey[ckey]].levels
+                        levels: domainCriteriaObj[domainCriteriaKeys[domainKey]][externalIdKeys[externalIdKey]][criteriaKey[ckey]].levels,
+                        levelsWithScores: domainCriteriaObj[domainCriteriaKeys[domainKey]][externalIdKeys[externalIdKey]][criteriaKey[ckey]].levelsWithScores
                     }
 
                     domainCriteriaObject.criterias.push(criteriaObj);
@@ -2030,7 +2061,7 @@ const getChartObject = async function (data, submissionCount) {
                     }
                     questionObject.answers.push(singleResponse.event.questionAnswer)
                 }))
-                questionObject.count = questionObject.answers.length;
+                questionObject.count = submissionCount;
                 questionObject.completedDate = sortedData[sortedData.length - 1].event.completedDate;
                 response.push(questionObject);
             }
@@ -2094,4 +2125,138 @@ exports.improvementProjectsObjectCreate = async function (data) {
     }));
 
     return improvementProjectSuggestions;
+}
+
+// Function question response report 
+exports.questionResponseReportDataObjectCreation = async function ( data, dateFilter = {} ) {
+    try {
+        const questionAndAnswers = [];
+        const questionResponseObj = [];
+        const questionArray = [];
+        const filteredQuestionResponse = [];
+        let uniqQuestionResponseArray= [];
+       
+        //getting program name and solution name from data
+        const filter ={
+            programName : data[0].events[0].programName,
+            solutionName : data[0].events[0].solutionName,
+            solutionId : data[0].events[0].solutionId,
+            solutionType : data[0].events[0].solution_type,
+            optionalFilters : []
+        }
+        //Add all optional filters applied to optionalFilters array. 
+        if ( data[0].events[0].organisation_name ) {
+            filter.optionalFilters.push( "Organization : " + data[0].events[0].organisation_name );
+        }
+        if ( data[0].events[0].user_blockName ) {
+            filter.optionalFilters.push( "Block : " + data[0].events[0].user_blockName );
+        }
+        if ( data[0].events[0].user_districtName ) {
+            filter.optionalFilters.push( "District : " + data[0].events[0].user_districtName  );
+        }
+        if ( _.isEmpty(dateFilter) == false ) {
+            filter.dateFilters = dateFilter;
+        }
+        
+        //each element contain data inside object events. saving events data to an array
+        for ( let eventIndex = 0; eventIndex < data.length; eventIndex++) {
+            const questionResponses = data[eventIndex].events;
+            for ( let questionResponseIndex = 0; questionResponseIndex < questionResponses.length; questionResponseIndex++) {
+                const response = {
+                    domainName : questionResponses[questionResponseIndex].domainName,
+                    criteriaName : questionResponses[questionResponseIndex].criteriaName,
+                    questionId : questionResponses[questionResponseIndex].questionId,
+                    questionName : questionResponses[questionResponseIndex].questionName,
+                    questionResponseType : questionResponses[questionResponseIndex].questionResponseType,
+                }
+
+                if ( questionResponses[questionResponseIndex].questionSequenceByEcm  && questionResponses[questionResponseIndex].questionSequenceByEcm != null ) {
+                    response.questionSequenceByEcm = Number(questionResponses[questionResponseIndex].questionSequenceByEcm)
+                } else {
+                    response.questionSequenceByEcm = null
+                }
+
+                questionResponseObj.push(response);
+
+                const questionData = {
+                    questionId : questionResponses[questionResponseIndex].questionId,
+                    answer : questionResponses[questionResponseIndex].questionResponseLabel
+                }
+                questionArray.push(questionData)
+            }
+        }
+    
+        if ( questionResponseObj.length > 0 ) {
+            uniqQuestionResponseArray =  _.uniqWith(questionResponseObj, _.isEqual);
+        }
+        
+        //from the question array calculate score for each options of all questions
+        if ( questionArray.length > 0 ) {
+            //group array based on question
+            const groupQuestionArray =  _.mapValues(_.groupBy(questionArray, 'questionId'),
+            qlist => qlist.map(questionArray => _.omit(questionArray, 'questionId')));
+           
+            //generate answer report for each question 
+            let questionsArray = Object.entries(groupQuestionArray)
+            for ( let questionIndex = 0; questionIndex < questionsArray.length ; questionIndex++ ) {
+                let item = questionsArray[questionIndex];
+                const answerStat = [];
+                const questionId = item[0];
+                const label = _.groupBy(item[1], response => response.answer);
+                let labelArray =  Object.entries(label);
+                for ( let labelIndex = 0; labelIndex < labelArray.length ; labelIndex++ ) {
+                    //calculate submissions for each labels
+                    let currentLabel = labelArray[labelIndex];
+                    const labelData = [];
+                    labelData[0] = currentLabel[0];
+                    labelData[1] =  currentLabel[1].length;
+                    answerStat.push(labelData);
+                }
+                questionAndAnswers[questionId] = answerStat
+            }   
+        }
+        
+        if ( uniqQuestionResponseArray.length > 0  ) {
+             //add answer evaluation data to each element in uniqQuestionResponseArray
+            for ( let index = 0 ; index < uniqQuestionResponseArray.length ; index++ ) {
+                let currentElementQuestionId = uniqQuestionResponseArray[index].questionId;
+                uniqQuestionResponseArray[index].answerData = questionAndAnswers[currentElementQuestionId]
+            }
+            //filter uniqQuestionResponseArray based on domain and criteria
+            const domaingrouping =  _.mapValues(_.groupBy(uniqQuestionResponseArray, 'domainName'),
+            qlist => qlist.map(uniqQuestionResponseArray => _.omit(uniqQuestionResponseArray, 'domainName')));
+
+            let domainArray = Object.entries(domaingrouping);
+            for ( let domainIndex = 0; domainIndex < domainArray.length; domainIndex++ ) {
+                let item = domainArray[domainIndex];
+                const domainWiseObject = {};
+                let arrayToGroup = item[1]
+                //group criteria wise grouping
+                const criteriaGrouping = _.mapValues(_.groupBy(arrayToGroup, 'criteriaName'),
+                qlist => qlist.map(arrayToGroup => _.omit(arrayToGroup, 'criteriaName')));
+                const criteriaArray = [];
+                Object.entries(criteriaGrouping).forEach(item => {
+                    const criteriaWiseObject = {
+                        criteriaName : item[0],
+                        questionData : item[1]
+                    };
+                    criteriaArray.push(criteriaWiseObject)                     
+                }) 
+                domainWiseObject.domain = item[0];
+                domainWiseObject.criterias = criteriaArray
+                filteredQuestionResponse.push(domainWiseObject);
+            }
+        }
+        return {
+            filterData : filter,
+            responseData : filteredQuestionResponse
+        }
+
+    } catch (err) {
+        let response = {
+            result: false,
+            message: err.message
+          };
+          return response;
+    }
 }
