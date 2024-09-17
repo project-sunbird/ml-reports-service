@@ -315,7 +315,11 @@ exports.getAllResponsesOfQuestion = async function (req, res) {
 
             bodyParam.filter.fields[0].value = req.body.solutionId;
             bodyParam.filter.fields[1].value = req.body.questionExternalId;
-            bodyParam.limit = numberOfResponsesLimit;
+
+            if (!(req.query.page && req.query.limit)) {
+                bodyParam.limit = numberOfResponsesLimit;
+            }
+
             if (req.body.completedDate) {
                 let timeFilter = { "type": "bound", "dimension": "completedDate", "lower": req.body.completedDate, "lowerStrict": true, "ordering": "numeric" }
                 bodyParam.filter.fields.push(timeFilter);
@@ -336,7 +340,7 @@ exports.getAllResponsesOfQuestion = async function (req, res) {
 
             } else {
 
-                response = await helperFunc.listALLAnswers(data);
+                response = await helperFunc.listALLAnswers(data,req.pageNo,req.pageSize);
                 console.log("Response:",{ resp: response });
                 res.send(response);
             }
@@ -533,14 +537,13 @@ exports.listAllEvidences = async function (req, res) {
             let filter = {};
 
             if (req.body.submissionId && req.body.questionId) {
-                filter = { "type": "and", fields: [{ "type": "selector", "dimension": "surveySubmissionId", "value": req.body.submissionId }, { "type": "selector", "dimension": "questionExternalId", "value": req.body.questionId }] };
+                filter = { "type": "and", fields: [{ "type": "selector", "dimension": "surveySubmissionId", "value": req.body.submissionId.replace(/[^a-zA-Z0-9_-]/g, '') }, { "type": "selector", "dimension": "questionExternalId", "value": req.body.questionId.replace(/[^a-zA-Z0-9_-]/g, '') }] };
             }
             else if (req.body.solutionId && req.body.questionId) {
-                filter = { "type": "and", fields: [{ "type": "selector", "dimension": "solutionId", "value": req.body.solutionId }, { "type": "selector", "dimension": "questionExternalId", "value": req.body.questionId }] };
+                filter = { "type": "and", fields: [{ "type": "selector", "dimension": "solutionId", "value": req.body.solutionId.replace(/[^a-zA-Z0-9_-]/g, '')}, { "type": "selector", "dimension": "questionExternalId", "value": req.body.questionId.replace(/[^a-zA-Z0-9_-]/g, '') }] };
             }
 
             bodyParam.filter = filter;
-
             //pass the query as body param and get the resul from druid
             let options = gen.utils.getDruidConnection();
             options.method = "POST";

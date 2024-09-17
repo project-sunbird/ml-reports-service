@@ -1,10 +1,13 @@
 const authenticator = require('../middleware/authentication_service');
+const pagination = require('../middleware/pagination');
 
 module.exports = function (app) {
 
     app.use(authenticator.authenticate);
+    app.use(pagination);
 
     let router = async function (req, res, next) {
+        
         if (!controllers[req.params.version]) {
             next();
         }
@@ -22,6 +25,7 @@ module.exports = function (app) {
     }
 
     app.all("/:version/:controller/:method", router);
+    app.all("/:version/:controller/:method/:_id", router);
 
     app.use((req, res, next) => {
         res.status(404).send("Not found");
